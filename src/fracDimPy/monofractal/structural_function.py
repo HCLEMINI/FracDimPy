@@ -20,7 +20,7 @@ from ..utils.fitting import log_log_fit
 
 
 def structural_function(
-    y_data: np.ndarray, x_interval: float = 1.0, max_tau: int = 30
+    y_data: np.ndarray, x_interval: float = 1.0, max_tau: int = 30, verbose: bool = False
 ) -> Tuple[float, dict]:
     """
 
@@ -69,7 +69,8 @@ def structural_function(
     # SFM.pymax_tau30
     # 10%
     if max_tau > int(0.1 * point_number):
-        print(f"max_tau={max_tau} 10% ({int(0.1 * point_number)})")
+        if verbose:
+            print(f"max_tau={max_tau} 10% ({int(0.1 * point_number)})")
         max_tau = min(max_tau, 30)
 
     if max_tau > point_number // 2:

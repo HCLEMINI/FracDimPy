@@ -13,13 +13,18 @@ from typing import Tuple, List, Optional
 
 # type: ignore
 
-from ..utils.multifractal_common import default_q_list, compute_partition, build_figure_data
+from ..utils.multifractal_common import (
+    default_q_list,
+    compute_partition,
+    build_figure_data,
+    build_metrics,
+)
 from ..utils.scales import power_of_two_scales
 from ..utils.box_counting_core import count_boxes_fixed
 
 
 def multifractal_image(
-    image: np.ndarray, q_list: Optional[List[float]] = None
+    image: np.ndarray, q_list: Optional[List[float]] = None, verbose: bool = False
 ) -> Tuple[dict, dict]:
     """
 
@@ -45,7 +50,7 @@ def multifractal_image(
     >>> #
     >>> img = np.random.randint(0, 256, (256, 256))
     >>> metrics, figure_data = multifractal_image(img)
-    >>> print(f" D(0): {metrics[' D(0)'][0]:.4f}")
+    >>> print(f"D(0): {metrics['D(0)'][0]:.4f}")
 
     Notes
     -----
@@ -53,7 +58,8 @@ def multifractal_image(
     """
     mt = image
     height, width = mt.shape
-    print(f"height,width: {height}, {width}")
+    if verbose:
+        print(f"height,width: {height}, {width}")
 
     # q0,1,2
     if q_list is None:
@@ -63,7 +69,8 @@ def multifractal_image(
 
     q_min = min(q_list)  # type: ignore
     q_max = max(q_list)  # type: ignore
-    print(f"q: {len(q_list)}, : [{q_min}, {q_max}]")
+    if verbose:
+        print(f"q: {len(q_list)}, : [{q_min}, {q_max}]")
 
     #
     xl = []  #
@@ -76,7 +83,8 @@ def multifractal_image(
     #
     M = min(height, width)
     epsilonl = power_of_two_scales(M)
-    print(f"{epsilonl}")
+    if verbose:
+        print(f"{epsilonl}")
 
     #
     for epsilon in epsilonl:
@@ -91,58 +99,17 @@ def multifractal_image(
 
     #  f = a*^2 + b* + c
     coeff = polyfit(al, fl, 2)
+    if verbose:
+        print(f"\nf- " f"\nf = {coeff[0]:.4f} + {coeff[1]:.4f} + {coeff[2]:.4f}")
 
-    print(f"\nf- " f"\nf = {coeff[0]:.4f} + {coeff[1]:.4f} + {coeff[2]:.4f}")
-
-    #
-    W = max(al) - min(al)  #
-    W_l = al[q_list.index(0)] - min(al)  #
-    W_r = max(al) - al[q_list.index(0)]  #
-
-    # metricsMFBC2D.py
-    metrics = {
-        # Holder
-        "(q=0)": [al[q_list.index(0)]],
-        "(q=1)": [al[q_list.index(1)]],
-        "(q=2)": [al[q_list.index(2)]],
-        f"(q={q_min})": [al[q_list.index(q_min)]],
-        f"(q=+{q_max})": [al[q_list.index(q_max)]],
-        f"(q={q_min}) - (q=0)": [al[q_list.index(q_min)] - al[q_list.index(0)]],
-        f"(q=0) - (q=+{q_max})": [al[q_list.index(0)] - al[q_list.index(q_max)]],
-        f"(q={q_min}) - (q=+{q_max})": [al[q_list.index(q_min)] - al[q_list.index(q_max)]],
-        #
-        "quad_coeff": [coeff[0]],
-        "linear_coeff": [coeff[1]],
-        "const_coeff": [coeff[2]],
-        #
-        "f(q=0)": [fl[q_list.index(0)]],
-        "f(q=1)": [fl[q_list.index(1)]],
-        "f(q=2)": [fl[q_list.index(2)]],
-        f"f(q={q_min})": [fl[q_list.index(q_min)]],
-        f"f(q=+{q_max})": [fl[q_list.index(q_max)]],
-        "f(q=0)-f(q=1)": [fl[q_list.index(0)] - fl[q_list.index(1)]],
-        f"f(q={q_min})-f(q=+{q_max})": [fl[q_list.index(q_min)] - fl[q_list.index(q_max)]],
-        #
-        "width_left": [W_l],
-        "width_right": [W_r],
-        "width_total": [W],
-        #
-        "H": [(1 + dl[q_list.index(2)]) / 2],
-        " D(0)": [dl[q_list.index(0)]],
-        " D(1)": [dl[q_list.index(1)]],
-        " D(2)": [dl[q_list.index(2)]],
-        "D(0)-D(1)": [dl[q_list.index(0)] - dl[q_list.index(1)]],
-        f"D({q_min})": [dl[q_list.index(q_min)]],
-        f"D(+{q_max})": [dl[q_list.index(q_max)]],
-        f"D({q_min})-D(+{q_max})": [dl[q_list.index(q_min)] - dl[q_list.index(q_max)]],
-    }
+    metrics = build_metrics(q_list, al, fl, dl, q_min, q_max, coeff=coeff)
 
     #
     figure_data = build_figure_data(q_list, tl, al, fl, dl, xl)
 
-    print("\n:")
-    for key in [" D(0)", " D(1)", " D(2)", "H", "width_total", "width_left", "width_right"]:
-        print(f"  {key}: {metrics[key][0]:.4f}")
+    if verbose:
+        for key in ["D(0)", "D(1)", "D(2)", "H", "width_total", "width_left", "width_right"]:
+            print(f"  {key}: {metrics[key][0]:.4f}")
 
     return metrics, figure_data
 

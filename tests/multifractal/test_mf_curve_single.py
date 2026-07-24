@@ -65,14 +65,14 @@ class TestMultifractalCurveSingle:
         )
 
         # Check that key dimensions are present and reasonable
-        assert " D(0)" in metrics, "Capacity dimension D(0) should be calculated"
-        assert " D(1)" in metrics, "Information dimension D(1) should be calculated"
-        assert " D(2)" in metrics, "Correlation dimension D(2) should be calculated"
+        assert "D(0)" in metrics, "Capacity dimension D(0) should be calculated"
+        assert "D(1)" in metrics, "Information dimension D(1) should be calculated"
+        assert "D(2)" in metrics, "Correlation dimension D(2) should be calculated"
 
         # Extract dimension values
-        d0 = metrics[" D(0)"][0]
-        d1 = metrics[" D(1)"][0]
-        d2 = metrics[" D(2)"][0]
+        d0 = metrics["D(0)"][0]
+        d1 = metrics["D(1)"][0]
+        d2 = metrics["D(2)"][0]
 
         # Validate dimension ranges (should be finite numbers)
         assert np.isfinite(d0), f"Capacity dimension D(0)={d0} should be finite"
@@ -167,12 +167,12 @@ class TestMultifractalCurveSingle:
         )
 
         # The analysis should be consistent
-        assert " D(0)" in metrics1, "D(0) should be calculated for default q range"
+        assert "D(0)" in metrics1, "D(0) should be calculated for default q range"
 
         # Extract key dimensions for comparison
-        d0_1 = metrics1[" D(0)"][0]
-        d1_1 = metrics1[" D(1)"][0]
-        d2_1 = metrics1[" D(2)"][0]
+        d0_1 = metrics1["D(0)"][0]
+        d1_1 = metrics1["D(1)"][0]
+        d2_1 = metrics1["D(2)"][0]
 
         # Validate finite values
         assert np.isfinite(d0_1), f"D(0) should be finite: {d0_1}"
@@ -188,9 +188,9 @@ class TestMultifractalCurveSingle:
         )
 
         # Get dimensions
-        d0 = metrics[" D(0)"][0]
-        d1 = metrics[" D(1)"][0]
-        d2 = metrics[" D(2)"][0]
+        d0 = metrics["D(0)"][0]
+        d1 = metrics["D(1)"][0]
+        d2 = metrics["D(2)"][0]
 
         spectrum_width = metrics["width_total"][0]
 

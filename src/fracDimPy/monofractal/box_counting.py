@@ -20,6 +20,18 @@ where N is the number of boxes and ε is the box size.
 New Features:
 - Boundary effect handling: 'valid', 'pad', 'periodic', 'reflect'
 - Box partitioning strategies: 'fixed', 'sliding', 'random'
+
+Note
+----
+The 'fixed' strategy shares a single dimension-agnostic core
+(``utils.box_counting_core.count_nonempty``). The 'sliding' and 'random'
+strategies are implemented separately in each data-type path to preserve
+numerical consistency with prior releases; their count normalisation
+(overlap factor ``(step/epsilon)**ndim``) is an empirical approximation.
+For strict fractal-dimension estimation, prefer ``partition_strategy='fixed'``.
+
+All progress messages are gated behind ``verbose=False``; pass ``verbose=True``
+to restore them.
 """
 
 import numpy as np
@@ -39,6 +51,7 @@ def box_counting(
     data_type: str = "curve",
     boundary_mode: str = "valid",
     partition_strategy: str = "fixed",
+    verbose: bool = False,
     **kwargs,
 ) -> Tuple[float, dict]:
     """
@@ -97,15 +110,15 @@ def box_counting(
     ...                          boundary_mode='periodic')
     """
     if data_type == "curve":
-        return _box_counting_curve(data, boundary_mode, partition_strategy, **kwargs)
+        return _box_counting_curve(data, boundary_mode, partition_strategy, verbose=verbose, **kwargs)
     elif data_type == "image":
-        return _box_counting_image(data, boundary_mode, partition_strategy, **kwargs)  # type: ignore[arg-type]
+        return _box_counting_image(data, boundary_mode, partition_strategy, verbose=verbose, **kwargs)  # type: ignore[arg-type]
     elif data_type == "surface":
-        return _box_counting_surface(data, boundary_mode, partition_strategy, **kwargs)  # type: ignore[arg-type]
+        return _box_counting_surface(data, boundary_mode, partition_strategy, verbose=verbose, **kwargs)  # type: ignore[arg-type]
     elif data_type == "scatter":
-        return _box_counting_scatter(data, boundary_mode, partition_strategy, **kwargs)
+        return _box_counting_scatter(data, boundary_mode, partition_strategy, verbose=verbose, **kwargs)
     elif data_type == "porous":
-        return _box_counting_porous(data, boundary_mode, partition_strategy, **kwargs)  # type: ignore[arg-type]
+        return _box_counting_porous(data, boundary_mode, partition_strategy, verbose=verbose, **kwargs)  # type: ignore[arg-type]
     else:
         raise ValueError(f"Unsupported data type: {data_type}")
 
@@ -188,29 +201,31 @@ def _get_box_positions(
 
     elif strategy == "random":
         # 随机位置采样
+        # 使用局部 RandomState 而非全局 np.random.seed，避免污染调用方的全局随机状态。
+        # RandomState(42) 与 np.random.seed(42) 产出的整数序列逐位一致，故数值结果不变。
         positions = []
-        np.random.seed(42)  # 保证可重复性
+        rng = np.random.RandomState(42)
 
         if len(data_shape) == 1:
             max_pos = data_shape[0] - epsilon
             for _ in range(n_random):
-                i = np.random.randint(0, max(1, max_pos))
+                i = rng.randint(0, max(1, max_pos))
                 positions.append((i,))
         elif len(data_shape) == 2:
             max_i = data_shape[0] - epsilon
             max_j = data_shape[1] - epsilon
             for _ in range(n_random):
-                i = np.random.randint(0, max(1, max_i))
-                j = np.random.randint(0, max(1, max_j))
+                i = rng.randint(0, max(1, max_i))
+                j = rng.randint(0, max(1, max_j))
                 positions.append((i, j))
         elif len(data_shape) == 3:
             max_i = data_shape[0] - epsilon
             max_j = data_shape[1] - epsilon
             max_k = data_shape[2] - epsilon
             for _ in range(n_random):
-                i = np.random.randint(0, max(1, max_i))
-                j = np.random.randint(0, max(1, max_j))
-                k = np.random.randint(0, max(1, max_k))
+                i = rng.randint(0, max(1, max_i))
+                j = rng.randint(0, max(1, max_j))
+                k = rng.randint(0, max(1, max_k))
                 positions.append((i, j, k))
         return positions
 
@@ -222,6 +237,7 @@ def _box_counting_curve(
     data: Union[np.ndarray, Tuple[np.ndarray, np.ndarray]],
     boundary_mode: str = "valid",
     partition_strategy: str = "fixed",
+    verbose: bool = False,
     **kwargs,
 ) -> Tuple[float, dict]:
     """
@@ -419,7 +435,11 @@ def _count_boxes_2d_advanced(
 
 
 def _box_counting_image(
-    image: np.ndarray, boundary_mode: str = "valid", partition_strategy: str = "fixed", **kwargs
+    image: np.ndarray,
+    boundary_mode: str = "valid",
+    partition_strategy: str = "fixed",
+    verbose: bool = False,
+    **kwargs,
 ) -> Tuple[float, dict]:
     """
     图像数据的盒计数分形维数
@@ -456,9 +476,10 @@ def _box_counting_image(
     n_random = kwargs.get("n_random", 5)
     sliding_step = kwargs.get("sliding_step", 0.5)
 
-    print(f"图像形状 (height, width): {height}, {width}")
-    print(f"像素值范围: {mt.min()} ~ {mt.max()}")
-    print(f"边界模式: {boundary_mode}, 划分策略: {partition_strategy}")
+    if verbose:
+        print(f"图像形状 (height, width): {height}, {width}")
+        print(f"像素值范围: {mt.min()} ~ {mt.max()}")
+        print(f"边界模式: {boundary_mode}, 划分策略: {partition_strategy}")
 
     # 计算盒子
     Nl = []
@@ -476,10 +497,12 @@ def _box_counting_image(
         if N == 0:
             N = 1  # 避免log(0)
         Nl.append(N)
-        print(f"N:{N}  盒子大小:{epsilon}       网格数: {height/epsilon} x {width/epsilon}")
+        if verbose:
+            print(f"N:{N}  盒子大小:{epsilon}       网格数: {height/epsilon} x {width/epsilon}")
 
-    print("盒子数 N: ", Nl)
-    print("盒子尺度: ", epsilonl)
+    if verbose:
+        print("盒子数 N: ", Nl)
+        print("盒子尺度: ", epsilonl)
 
     # 线性拟合
     x_fit = np.log(np.array([1 / epsilon for epsilon in epsilonl]))
@@ -488,7 +511,8 @@ def _box_counting_image(
     dimension, intercept, R2 = log_log_fit(x_fit, y_fit)
     coefficients = np.array([dimension, intercept])
 
-    print(f"拟合度 R²: {R2:.6f}")
+    if verbose:
+        print(f"拟合度 R²: {R2:.6f}")
 
     result = {
         "dimension": dimension,
@@ -592,6 +616,7 @@ def _box_counting_surface(
     method: int = 2,
     mt_epsilon_min: float = None,
     n_scales: int = 5,
+    verbose: bool = False,
     **kwargs,
 ) -> Tuple[float, dict]:
     """
@@ -645,11 +670,12 @@ def _box_counting_surface(
 
     method_names = {0: "RDCCM", 1: "DCCM", 2: "CCM", 3: "ICCM", 5: "SCCM", 6: "SDCCM"}
 
-    print(f"曲面形状: {mt.shape}")
-    print(f"X长度: {x_lenth:.4f}, Y长度: {y_lenth:.4f}")
-    print(f"最小尺度: {M:.4f}, 网格间距: {mt_epsilon_min}")
-    print(f'计数方法: {method_names.get(method, "Unknown")} (method={method})')
-    print(f"边界模式: {boundary_mode}, 划分策略: {partition_strategy}")
+    if verbose:
+        print(f"曲面形状: {mt.shape}")
+        print(f"X长度: {x_lenth:.4f}, Y长度: {y_lenth:.4f}")
+        print(f"最小尺度: {M:.4f}, 网格间距: {mt_epsilon_min}")
+        print(f'计数方法: {method_names.get(method, "Unknown")} (method={method})')
+        print(f"边界模式: {boundary_mode}, 划分策略: {partition_strategy}")
 
     # 生成尺度列表
     epsilon_min = mt_epsilon_min * 2
@@ -667,8 +693,9 @@ def _box_counting_surface(
         sliding_step,
     )
 
-    print("盒子数 N: ", N_list)
-    print("盒子尺度: ", epsilon_list)
+    if verbose:
+        print("盒子数 N: ", N_list)
+        print("盒子尺度: ", epsilon_list)
 
     # 线性拟合
     x_fit = np.log(np.array([1 / epsilon for epsilon in epsilon_list]))
@@ -677,7 +704,8 @@ def _box_counting_surface(
     dimension, intercept, R2 = log_log_fit(x_fit, y_fit)
     coefficients = np.array([dimension, intercept])
 
-    print(f"拟合度 R²: {R2:.6f}")
+    if verbose:
+        print(f"拟合度 R²: {R2:.6f}")
 
     result = {
         "dimension": dimension,
@@ -853,6 +881,7 @@ def _box_counting_scatter(
     scatter: Union[np.ndarray, Tuple],
     boundary_mode: str = "valid",
     partition_strategy: str = "fixed",
+    verbose: bool = False,
     **kwargs,
 ) -> Tuple[float, dict]:
     """
@@ -898,10 +927,11 @@ def _box_counting_scatter(
     n_random = kwargs.get("n_random", 5)
     sliding_step = kwargs.get("sliding_step", 0.5)
 
-    print(f"数据长度: {len(mt)}")
-    print(f"散点数量: {np.sum(mt)}")
-    print(f"最小间距: {mt_epsilon}")
-    print(f"边界模式: {boundary_mode}, 划分策略: {partition_strategy}")
+    if verbose:
+        print(f"数据长度: {len(mt)}")
+        print(f"散点数量: {np.sum(mt)}")
+        print(f"最小间距: {mt_epsilon}")
+        print(f"边界模式: {boundary_mode}, 划分策略: {partition_strategy}")
 
     # 计算盒子
     Nl = []
@@ -923,8 +953,9 @@ def _box_counting_scatter(
         Nl.append(N)
         epsilonl.append(epsilon * mt_epsilon)
 
-    print("盒子数 N: ", Nl)
-    print("盒子尺度: ", epsilonl)
+    if verbose:
+        print("盒子数 N: ", Nl)
+        print("盒子尺度: ", epsilonl)
 
     # 线性拟合
     x_fit = np.log(np.array([1 / epsilon for epsilon in epsilonl]))
@@ -933,7 +964,8 @@ def _box_counting_scatter(
     dimension, intercept, R2 = log_log_fit(x_fit, y_fit)
     coefficients = np.array([dimension, intercept])
 
-    print(f"拟合度 R²: {R2:.6f}")
+    if verbose:
+        print(f"拟合度 R²: {R2:.6f}")
 
     result = {
         "dimension": dimension,
@@ -1032,7 +1064,11 @@ def _count_boxes_1d_advanced(
 
 
 def _box_counting_porous(
-    porous: np.ndarray, boundary_mode: str = "valid", partition_strategy: str = "fixed", **kwargs
+    porous: np.ndarray,
+    boundary_mode: str = "valid",
+    partition_strategy: str = "fixed",
+    verbose: bool = False,
+    **kwargs,
 ) -> Tuple[float, dict]:
     """
     多孔介质数据的盒计数分形维数
@@ -1071,9 +1107,10 @@ def _box_counting_porous(
     n_random = kwargs.get("n_random", 5)
     sliding_step = kwargs.get("sliding_step", 0.5)
 
-    print(f"多孔介质形状 (depth, height, width): {depth}, {height}, {width}")
-    print(f"孔隙体素: {np.sum(mt == 1)}, 固体体素: {np.sum(mt == 0)}")
-    print(f"边界模式: {boundary_mode}, 划分策略: {partition_strategy}")
+    if verbose:
+        print(f"多孔介质形状 (depth, height, width): {depth}, {height}, {width}")
+        print(f"孔隙体素: {np.sum(mt == 1)}, 固体体素: {np.sum(mt == 0)}")
+        print(f"边界模式: {boundary_mode}, 划分策略: {partition_strategy}")
 
     # 计算盒子
     Nl = []
@@ -1091,10 +1128,12 @@ def _box_counting_porous(
         if N == 0:
             N = 1  # 避免log(0)
         Nl.append(N)
-        print(f"R:{epsilon}  N_R:{N}")
+        if verbose:
+            print(f"R:{epsilon}  N_R:{N}")
 
-    print("盒子数 N: ", Nl)
-    print("盒子尺度: ", epsilonl)
+    if verbose:
+        print("盒子数 N: ", Nl)
+        print("盒子尺度: ", epsilonl)
 
     # 线性拟合
     x_fit = np.log(np.array([1 / epsilon for epsilon in epsilonl]))
@@ -1103,7 +1142,8 @@ def _box_counting_porous(
     dimension, intercept, R2 = log_log_fit(x_fit, y_fit)
     coefficients = np.array([dimension, intercept])
 
-    print(f"拟合度 R²: {R2:.6f}")
+    if verbose:
+        print(f"拟合度 R²: {R2:.6f}")
 
     result = {
         "dimension": dimension,

@@ -93,8 +93,13 @@ def compute_partition(q_list, Pill, epsilonl):
     return tl, al, fl, dl, xl
 
 
-def build_metrics(q_list, al, fl, dl, q_min_val, q_max_val, extra=None):
+def build_metrics(q_list, al, fl, dl, q_min_val, q_max_val, coeff=None, extra=None):
     """Build the standardized multifractal metrics dictionary.
+
+    Produces pure-ASCII keys whose values are wrapped in single-element lists,
+    e.g. ``metrics["D(0)"][0]``. This matches the historical access pattern of
+    ``multifractal_curve`` / ``multifractal_image`` while retiring the legacy
+    leading-space and CJK-bracket key names.
 
     Parameters
     ----------
@@ -106,8 +111,11 @@ def build_metrics(q_list, al, fl, dl, q_min_val, q_max_val, extra=None):
         Minimum q value.
     q_max_val : float
         Maximum q value.
+    coeff : array-like, optional
+        Quadratic f(alpha) = c2*alpha^2 + c1*alpha + c0 coefficients
+        ``[c2, c1, c0]`` (numpy.polyfit descending order).
     extra : dict, optional
-        Additional keys to merge into the metrics.
+        Additional scalar entries; each is wrapped as ``[value]``.
 
     Returns
     -------
@@ -120,7 +128,6 @@ def build_metrics(q_list, al, fl, dl, q_min_val, q_max_val, extra=None):
     fl_arr = np.array(fl)
     dl_arr = np.array(dl)
 
-    # Find indices for key q values
     def _idx(q_val):
         diffs = np.abs(q_arr - q_val)
         return int(np.argmin(diffs))
@@ -128,40 +135,49 @@ def build_metrics(q_list, al, fl, dl, q_min_val, q_max_val, extra=None):
     i0, i1, i2 = _idx(0), _idx(1), _idx(2)
     imin, imax = _idx(q_min_val), _idx(q_max_val)
 
-    metrics["alpha(q=0)"] = al_arr[i0]
-    metrics["alpha(q=1)"] = al_arr[i1]
-    metrics["alpha(q=2)"] = al_arr[i2]
-    metrics["alpha(q=min)"] = al_arr[imin]
-    metrics["alpha(q=max)"] = al_arr[imax]
-    metrics["alpha(q=0)-alpha(q=1)"] = al_arr[i0] - al_arr[i1]
-    metrics["alpha(q=2)-alpha(q=1)"] = al_arr[i2] - al_arr[i1]
+    # Holder exponent alpha(q)
+    metrics["alpha(q=0)"] = [al_arr[i0]]
+    metrics["alpha(q=1)"] = [al_arr[i1]]
+    metrics["alpha(q=2)"] = [al_arr[i2]]
+    metrics["alpha(q=min)"] = [al_arr[imin]]
+    metrics["alpha(q=max)"] = [al_arr[imax]]
+    metrics["alpha(q=min)-alpha(q=0)"] = [al_arr[imin] - al_arr[i0]]
+    metrics["alpha(q=0)-alpha(q=max)"] = [al_arr[i0] - al_arr[imax]]
+    metrics["alpha(q=min)-alpha(q=max)"] = [al_arr[imin] - al_arr[imax]]
 
-    metrics["width_left"] = al_arr[i0] - al_arr[imin]
-    metrics["width_right"] = al_arr[imax] - al_arr[i0]
-    metrics["width_total"] = al_arr[imax] - al_arr[imin]
+    # Parabolic f(alpha) fit coefficients
+    if coeff is not None:
+        metrics["quad_coeff"] = [coeff[0]]
+        metrics["linear_coeff"] = [coeff[1]]
+        metrics["const_coeff"] = [coeff[2]]
 
-    # f values
-    metrics["f(q=0)"] = fl_arr[i0]
-    metrics["f(q=1)"] = fl_arr[i1]
-    metrics["f(q=2)"] = fl_arr[i2]
-    metrics["f(q=min)"] = fl_arr[imin]
-    metrics["f(q=max)"] = fl_arr[imax]
-    metrics["f(q=0)-f(q=1)"] = fl_arr[i0] - fl_arr[i1]
-    metrics["f(q_min)-f(q_max)"] = fl_arr[imin] - fl_arr[imax]
+    # f(alpha) values
+    metrics["f(q=0)"] = [fl_arr[i0]]
+    metrics["f(q=1)"] = [fl_arr[i1]]
+    metrics["f(q=2)"] = [fl_arr[i2]]
+    metrics["f(q=min)"] = [fl_arr[imin]]
+    metrics["f(q=max)"] = [fl_arr[imax]]
+    metrics["f(q=0)-f(q=1)"] = [fl_arr[i0] - fl_arr[i1]]
+    metrics["f(q=min)-f(q=max)"] = [fl_arr[imin] - fl_arr[imax]]
 
-    # D values
-    metrics["D(0)"] = dl_arr[i0]
-    metrics["D(1)"] = dl_arr[i1]
-    metrics["D(2)"] = dl_arr[i2]
-    metrics["D(0)-D(1)"] = dl_arr[i0] - dl_arr[i1]
-    metrics["D(min)"] = dl_arr[imin]
-    metrics["D(max)"] = dl_arr[imax]
-    metrics["D(min)-D(max)"] = dl_arr[imin] - dl_arr[imax]
+    # Spectrum widths (derived from alpha)
+    metrics["width_left"] = [al_arr[i0] - al_arr[imin]]
+    metrics["width_right"] = [al_arr[imax] - al_arr[i0]]
+    metrics["width_total"] = [al_arr[imax] - al_arr[imin]]
 
-    metrics["H"] = 2 - dl_arr[i2]
+    # Generalized dimensions D(q) and Hurst exponent H = (1 + D(2)) / 2
+    metrics["D(0)"] = [dl_arr[i0]]
+    metrics["D(1)"] = [dl_arr[i1]]
+    metrics["D(2)"] = [dl_arr[i2]]
+    metrics["D(0)-D(1)"] = [dl_arr[i0] - dl_arr[i1]]
+    metrics["D(min)"] = [dl_arr[imin]]
+    metrics["D(max)"] = [dl_arr[imax]]
+    metrics["D(min)-D(max)"] = [dl_arr[imin] - dl_arr[imax]]
+    metrics["H"] = [(1 + dl_arr[i2]) / 2]
 
     if extra:
-        metrics.update(extra)
+        for k, v in extra.items():
+            metrics[k] = v if isinstance(v, list) else [v]
 
     return metrics
 

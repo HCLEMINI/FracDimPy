@@ -25,6 +25,7 @@ def correlation_dimension(
     max_r: Optional[float] = None,
     num_points: int = 20,
     max_samples: int = 5000,
+    verbose: bool = False,
 ) -> Tuple[float, Dict]:
     """
     Correlation Dimension
@@ -117,7 +118,8 @@ def correlation_dimension(
     N = len(points)
 
     #
-    print(f"Processing {N} points ...")
+    if verbose:
+        print(f"Processing {N} points ...")
 
     #
     # distances[i, j] = ||points[i] - points[j]||
@@ -138,7 +140,8 @@ def correlation_dimension(
 
     correlations = []
 
-    print("Computing correlations...")
+    if verbose:
+        print("Computing correlations...")
     for r in radii:
         # r
         C_r = np.sum(distances < r) / len(distances)

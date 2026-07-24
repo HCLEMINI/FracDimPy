@@ -4,7 +4,7 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Version](https://img.shields.io/badge/version-0.1.4-green.svg)](https://github.com/songLe/FracDimPy)
+[![Version](https://img.shields.io/badge/version-0.1.5-green.svg)](https://github.com/songLe/FracDimPy)
 
 **一个全面的Python分形维数计算与多重分形分析工具包**
 
@@ -126,7 +126,7 @@ print(f"盒计数维数: {D:.4f}, R²: {result['R2']:.4f}")
 
 # 多重分形分析（单列数据）
 metrics, figure_data = multifractal_curve(curve, data_type="single")
-print(f"D(0)={metrics[' D(0)'][0]:.4f}, D(1)={metrics[' D(1)'][0]:.4f}, D(2)={metrics[' D(2)'][0]:.4f}")
+print(f"D(0)={metrics['D(0)'][0]:.4f}, D(1)={metrics['D(1)'][0]:.4f}, D(2)={metrics['D(2)'][0]:.4f}")
 
 # 多重分形DFA
 hq, spectrum = mf_dfa(curve)
@@ -134,6 +134,8 @@ q_arr = np.array(hq['q_list'])
 idx_2 = np.where(np.abs(q_arr - 2) < 1e-10)[0][0]
 print(f"h(2)={hq['h_q'][idx_2]:.4f}, 谱宽度={spectrum['width']:.4f}")
 ```
+
+> **提示**:分析函数(`box_counting`、`multifractal_curve`、`multifractal_image` 等)默认静默不输出;传 `verbose=True` 可打印逐尺度诊断信息。所有随机分形生成器均支持 `seed` 参数以获得可复现结果。
 
 ## 📦 模块说明
 
@@ -203,6 +205,18 @@ print(f"h(2)={hq['h_q'][idx_2]:.4f}, 谱宽度={spectrum['width']:.4f}")
   - `image_drawing` - Bresenham 线段绘制与坐标映射
   - `conversion` - 坐标转矩阵、灰度转换、边界填充
 
+### Hurst 指数约定
+
+不同方法给出的 Hurst 指数 `H` 采用不同约定,跨方法比较时请注意:
+
+| 方法 | `H` 的获取方式 | 与维数的关系 |
+| --- | --- | --- |
+| `hurst_dimension` | R/S ~ r 的斜率 | `D = 2 - H` |
+| `dfa` | F(n) ~ n 的斜率 `alpha` | `H = alpha`,`D = 2 - alpha` |
+| `variogram_method` | γ(h) ~ h 的斜率(= 2H) | `H = slope/2`;`D = 2 - H`(1D)/ `3 - H`(曲面) |
+| `multifractal_curve` / `multifractal_image` | 由测度的广义维数 `D(2)` 得到 | `H = (1 + D(2)) / 2` |
+| `mf_dfa` | 广义 Hurst 指数 `h(q)` | `H = h(2)`(标准 DFA) |
+
 ### 项目结构
 
 ```
@@ -225,8 +239,7 @@ src/fracDimPy/
 ├── generator/               # 分形生成器
 │   ├── curves.py            # FBM、WM、Takagi曲线
 │   ├── surfaces.py          # FBM、WM、Takagi曲面
-│   ├── patterns.py          # Cantor、Sierpinski、Koch、DLA、Menger等
-│   └── random_fractals.py   # 布朗运动、Lévy飞行等
+│   └── patterns.py          # Cantor、Sierpinski、Koch、DLA、布朗运动、Menger等
 └── utils/                   # 共享工具
     ├── data_io.py            # 数据读写
     ├── plotting.py           # 可视化工具
@@ -346,7 +359,7 @@ python test_hurst.py
   title = {FracDimPy: A Comprehensive Python Package for Fractal Dimension Calculation and Multifractal Analysis},
   year = {2024},
   url = {https://github.com/Kecoya/FracDimPy},
-  version = {0.1.3}
+  version = {0.1.5}
 }
 ```
 
@@ -354,12 +367,25 @@ python test_hurst.py
 
 ## 📋 更新日志
 
+### v0.1.5 (2026)
+
+**API 整洁与可复现性(保守改动——无任何数值变化)**
+
+- 多重分形 metrics 键名统一为纯 ASCII(`D(0)`、`alpha(q=0)` 等),`multifractal_curve` / `multifractal_image` 改用共享的 `build_metrics`;移除历史遗留的带前导空格和中文括号的键名
+- 所有随机分形生成器(`generate_fbm_curve`、`generate_fbm_surface`、`generate_wm_surface`、`generate_brownian_motion`、`generate_levy_flight`、`generate_self_avoiding_walk`、`generate_dla`)新增 `seed` 参数以支持可复现;`seed=None` 保持原有随机行为
+- 消除全局状态污染:`box_counting` 的 random 策略改用局部 `RandomState(42)`(输出逐位一致,不再污染全局随机种子);`generate_wm_surface` 不再调用 `np.random.seed()`
+- `generate_fbm_curve(method=...)` / `generate_fbm_surface(method=...)` 对不支持的方法显式抛出 `ValueError`,不再静默回落
+- 所有诊断 `print` 输出收口到 `verbose=False` 开关(`box_counting`、`multifractal_curve`、`multifractal_image`、`correlation_dimension`、`structural_function`、`custom_epsilon`)
+- 修复 `plot_multifractal_spectrum` 读取不存在的 figure_data 键(τ(q)/α(q) 此前静默为空)
+- 文档说明 `sliding` / `random` 盒计数归一化为经验近似;`fixed` 仍是严格估计的推荐策略
+- 全部 384 个测试仍通过;既有数值结果不变
+
 ### v0.1.3 (2024)
 
 **架构重构**
 
 - 提取 6 个共享工具模块（`fitting`、`scales`、`box_counting_core`、`multifractal_common`、`image_drawing`、`conversion`），消除 16 个源文件中约 1000 行重复代码
-- 统一盒计数实现为单一维度无关核心函数，替代 4 套独立副本
+- 'fixed' 盒计数策略在各数据类型间共享维度无关核心函数;'sliding'/'random' 策略仍为各路径独立实现
 - 合并所有对数回归模式（15+ 处）为 `log_log_fit()` 和 `linear_fit()`
 - 共享多重分形配分函数计算逻辑于 `mf_curve` 和 `mf_image` 之间
 

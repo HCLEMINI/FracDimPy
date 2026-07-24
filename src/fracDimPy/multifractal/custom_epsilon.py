@@ -91,7 +91,7 @@ def coordinate_to_matrix(x: np.ndarray, z: np.ndarray, epsilon: float) -> np.nda
     return matrix
 
 
-def fill_vacancy(mt: np.ndarray) -> np.ndarray:
+def fill_vacancy(mt: np.ndarray, verbose: bool = False) -> np.ndarray:
     """
     -1
 
@@ -121,7 +121,8 @@ def fill_vacancy(mt: np.ndarray) -> np.ndarray:
     num_vacancy = len(vacancy_indices)
 
     if num_vacancy > 0:
-        print(f": {num_vacancy}/{length}; : {num_vacancy/length*100:.4f}%")
+        if verbose:
+            print(f": {num_vacancy}/{length}; : {num_vacancy/length*100:.4f}%")
 
         # -1
         valid_indices = np.argwhere(mt > -1).flatten()
@@ -179,6 +180,7 @@ def custom_epsilon(
     interpolate_to_power2: bool = True,
     target_length: Optional[int] = None,
     remove_zeros: bool = False,
+    verbose: bool = False,
 ) -> Tuple[float, np.ndarray, np.ndarray]:
     """
     epsilonCustomEpsilon.ce
@@ -225,7 +227,7 @@ def custom_epsilon(
     matrix = coordinate_to_matrix(x, z, mt_epsilon_min)
 
     #
-    matrix = fill_vacancy(matrix)
+    matrix = fill_vacancy(matrix, verbose=verbose)
 
     # 2
     if interpolate_to_power2:

@@ -4,7 +4,7 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Version](https://img.shields.io/badge/version-0.1.4-green.svg)](https://pypi.org/project/FracDimPy/0.1.4/)
+[![Version](https://img.shields.io/badge/version-0.1.5-green.svg)](https://pypi.org/project/FracDimPy/0.1.5/)
 [![PyPI](https://img.shields.io/pypi/v/FracDimPy.svg)](https://pypi.org/project/FracDimPy/)
 
 **A Comprehensive Python Package for Fractal Dimension Calculation and Multifractal Analysis**
@@ -127,7 +127,7 @@ print(f"Box-counting dimension: {D:.4f}, R²: {result['R2']:.4f}")
 
 # Multifractal analysis (single column)
 metrics, figure_data = multifractal_curve(curve, data_type="single")
-print(f"D(0)={metrics[' D(0)'][0]:.4f}, D(1)={metrics[' D(1)'][0]:.4f}, D(2)={metrics[' D(2)'][0]:.4f}")
+print(f"D(0)={metrics['D(0)'][0]:.4f}, D(1)={metrics['D(1)'][0]:.4f}, D(2)={metrics['D(2)'][0]:.4f}")
 
 # MF-DFA
 hq, spectrum = mf_dfa(curve)
@@ -135,6 +135,8 @@ q_arr = np.array(hq['q_list'])
 idx_2 = np.where(np.abs(q_arr - 2) < 1e-10)[0][0]
 print(f"h(2)={hq['h_q'][idx_2]:.4f}, spectrum width={spectrum['width']:.4f}")
 ```
+
+> **Tip**: Analysis functions (`box_counting`, `multifractal_curve`, `multifractal_image`, ...) are silent by default; pass `verbose=True` for per-scale diagnostics. All stochastic generators accept a `seed` parameter for reproducible output.
 
 ---
 
@@ -206,6 +208,18 @@ Generates various theoretical and random fractals:
   - `image_drawing` - Bresenham line drawing and coordinate normalization
   - `conversion` - Coordinate-to-matrix, grayscale conversion, boundary padding
 
+### Hurst Exponent Conventions
+
+Different methods expose the Hurst exponent `H` under different conventions — be aware when comparing values across methods:
+
+| Method | How `H` is obtained | Relation to dimension |
+| --- | --- | --- |
+| `hurst_dimension` | slope of R/S ~ r | `D = 2 - H` |
+| `dfa` | slope `alpha` of F(n) ~ n | `H = alpha`, `D = 2 - alpha` |
+| `variogram_method` | slope of γ(h) ~ h (= 2H) | `H = slope/2`; `D = 2 - H` (1D) / `3 - H` (surface) |
+| `multifractal_curve` / `multifractal_image` | from the measure's generalized dimension `D(2)` | `H = (1 + D(2)) / 2` |
+| `mf_dfa` | generalized Hurst exponent `h(q)` | `H = h(2)` (standard DFA) |
+
 ### Project Structure
 
 ```
@@ -228,8 +242,7 @@ src/fracDimPy/
 ├── generator/               # Fractal generators
 │   ├── curves.py            # FBM, WM, Takagi curves
 │   ├── surfaces.py          # FBM, WM, Takagi surfaces
-│   ├── patterns.py          # Cantor, Sierpinski, Koch, DLA, Menger...
-│   └── random_fractals.py   # Brownian motion, Lévy flight, etc.
+│   └── patterns.py          # Cantor, Sierpinski, Koch, DLA, Brownian, Menger...
 └── utils/                   # Shared utilities
     ├── data_io.py            # Data loading and saving
     ├── plotting.py           # Visualization tools
@@ -349,7 +362,7 @@ If you use FracDimPy in your research, please cite:
   title = {FracDimPy: A Comprehensive Python Package for Fractal Dimension Calculation and Multifractal Analysis},
   year = {2024},
   url = {https://github.com/Kecoya/FracDimPy},
-  version = {0.1.4}
+  version = {0.1.5}
 }
 ```
 
@@ -357,12 +370,25 @@ If you use FracDimPy in your research, please cite:
 
 ## 📋 Changelog
 
+### v0.1.5 (2026)
+
+**API Hygiene & Reproducibility (conservative — no numerical change)**
+
+- Standardized multifractal metrics keys to pure ASCII (`D(0)`, `alpha(q=0)`, ...) and routed `multifractal_curve` / `multifractal_image` through the shared `build_metrics`; removed legacy leading-space and CJK-bracket key names
+- Added a `seed` parameter to every stochastic generator (`generate_fbm_curve`, `generate_fbm_surface`, `generate_wm_surface`, `generate_brownian_motion`, `generate_levy_flight`, `generate_self_avoiding_walk`, `generate_dla`) for reproducibility; `seed=None` preserves the previous random behaviour
+- Removed global-state mutation: the `box_counting` random strategy now uses a local `RandomState(42)` (bit-identical output, no global seed pollution); `generate_wm_surface` no longer calls `np.random.seed()`
+- `generate_fbm_curve(method=...)` / `generate_fbm_surface(method=...)` now raise `ValueError` on unsupported methods instead of silently falling through
+- Gated all diagnostic `print` output behind `verbose=False` (`box_counting`, `multifractal_curve`, `multifractal_image`, `correlation_dimension`, `structural_function`, `custom_epsilon`)
+- Fixed `plot_multifractal_spectrum` reading non-existent figure_data keys (τ(q)/α(q) were silently empty)
+- Documented that the `sliding` / `random` box-counting normalisation is an empirical approximation; `fixed` remains the recommended strategy for strict estimation
+- All 384 tests still pass; existing numerical results are unchanged
+
 ### v0.1.3 (2024)
 
 **Architecture Refactoring**
 
 - Extracted 6 shared utility modules (`fitting`, `scales`, `box_counting_core`, `multifractal_common`, `image_drawing`, `conversion`) to eliminate ~1000 lines of duplicated code across 16 source files
-- Unified box-counting implementation into a single dimension-agnostic core, replacing 4 separate copies
+- Shared a dimension-agnostic core for the 'fixed' box-counting strategy across all data types (the 'sliding'/'random' strategies remain path-specific)
 - Consolidated all log-log regression patterns (15+ occurrences) into `log_log_fit()` and `linear_fit()`
 - Shared multifractal partition function computation between `mf_curve` and `mf_image`
 

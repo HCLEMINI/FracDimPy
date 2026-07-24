@@ -12,11 +12,11 @@ This module implements various fractal curve generation algorithms:
 """
 
 import numpy as np
-from typing import Tuple
+from typing import Tuple, Optional
 
 
 def generate_fbm_curve(
-    dimension: float, length: int = 1024, method: str = "daviesharte"
+    dimension: float, length: int = 1024, method: str = "daviesharte", seed: Optional[int] = None
 ) -> Tuple[np.ndarray, float]:
     """
     Generate a Fractional Brownian Motion (FBM) curve with specified fractal dimension.
@@ -28,8 +28,10 @@ def generate_fbm_curve(
     length : int, optional
         Number of points in the curve, default is 1024
     method : str, optional
-        Generation method: 'daviesharte' or 'fft'
-        Default is 'daviesharte'
+        Generation method. Only 'daviesharte' is implemented (default).
+    seed : int, optional
+        Random seed for reproducibility. None (default) draws fresh randomness
+        each call, matching the previous behaviour.
 
     Returns
     -------
@@ -56,8 +58,13 @@ def generate_fbm_curve(
     if not (1 < dimension < 2):
         raise ValueError("Dimension must be in range (1, 2)")
 
+    if method != "daviesharte":
+        raise ValueError(
+            f"Unknown method: {method!r}. Only 'daviesharte' is implemented."
+        )
+
     H = 2 - dimension  # Convert to Hurst exponent
-    curve = _generate_fbm_daviesharte(length, H)
+    curve = _generate_fbm_daviesharte(length, H, seed)
 
     return curve, dimension
 
@@ -186,7 +193,7 @@ def generate_takagi_curve(
     return x, y
 
 
-def _generate_fbm_daviesharte(n: int, H: float) -> np.ndarray:
+def _generate_fbm_daviesharte(n: int, H: float, seed: Optional[int] = None) -> np.ndarray:
     """
     Generate Fractional Brownian Motion using the Davies-Harte algorithm.
 
@@ -241,7 +248,8 @@ def _generate_fbm_daviesharte(n: int, H: float) -> np.ndarray:
 
     # Generate random Gaussian variables
     # Z1, Z2 are independent standard normal
-    randn = np.random.randn(n_fft // 2 + 1) + 1j * np.random.randn(n_fft // 2 + 1)
+    rng = np.random.default_rng(seed)
+    randn = rng.standard_normal(n_fft // 2 + 1) + 1j * rng.standard_normal(n_fft // 2 + 1)
     randn[0] = randn[0].real * np.sqrt(2)  # DC component (real)
     randn[-1] = randn[-1].real * np.sqrt(2)  # Nyquist frequency (real)
 

@@ -475,7 +475,11 @@ def generate_koch_snowflake(level: int = 4, size: int = 512) -> np.ndarray:
 
 
 def generate_brownian_motion(
-    steps: int = 10000, size: int = 512, step_size: float = 1.0, num_paths: int = 1
+    steps: int = 10000,
+    size: int = 512,
+    step_size: float = 1.0,
+    num_paths: int = 1,
+    seed: Optional[int] = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Generate random walk (2D Brownian motion) paths.
@@ -511,11 +515,12 @@ def generate_brownian_motion(
     2D Brownian motion (random walk) has fractal dimension 2.
     """
     # Generate multiple paths
+    rng = np.random.default_rng(seed)
     all_paths = []
 
     for _ in range(num_paths):
         # Generate random angles
-        angles = np.random.uniform(0, 2 * np.pi, steps)
+        angles = rng.uniform(0, 2 * np.pi, steps)
 
         # Compute displacements
         dx = step_size * np.cos(angles)
@@ -556,7 +561,11 @@ def generate_brownian_motion(
 
 
 def generate_levy_flight(
-    steps: int = 5000, size: int = 512, alpha: float = 1.5, num_paths: int = 1
+    steps: int = 5000,
+    size: int = 512,
+    alpha: float = 1.5,
+    num_paths: int = 1,
+    seed: Optional[int] = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Generate Lévy flight random walk paths.
@@ -596,11 +605,12 @@ def generate_levy_flight(
     if not (0 < alpha <= 2):
         raise ValueError("Lévy exponent alpha must be in range (0, 2]")
 
+    rng = np.random.default_rng(seed)
     all_paths = []
 
     for _ in range(num_paths):
         # Generate random angles
-        angles = np.random.uniform(0, 2 * np.pi, steps)
+        angles = rng.uniform(0, 2 * np.pi, steps)
 
         # Generate Lévy-distributed step lengths
         # Using Mantegna's algorithm
@@ -612,8 +622,8 @@ def generate_levy_flight(
             / (math.gamma((1 + alpha) / 2) * alpha * 2 ** ((alpha - 1) / 2))
         ) ** (1 / alpha)
 
-        u = np.random.normal(0, sigma_u, steps)
-        v = np.random.normal(0, 1, steps)
+        u = rng.normal(0, sigma_u, steps)
+        v = rng.normal(0, 1, steps)
 
         step_lengths = u / (np.abs(v) ** (1 / alpha))
 
@@ -658,7 +668,11 @@ def generate_levy_flight(
 
 
 def generate_self_avoiding_walk(
-    steps: int = 5000, size: int = 512, num_attempts: int = 10, max_retries: int = 1000
+    steps: int = 5000,
+    size: int = 512,
+    num_attempts: int = 10,
+    max_retries: int = 1000,
+    seed: Optional[int] = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Generate self-avoiding random walk paths.
@@ -706,6 +720,7 @@ def generate_self_avoiding_walk(
     - May fail to generate full length for large step counts
     - Generates up to 4 directions at each step
     """
+    rng = np.random.default_rng(seed)
     successful_paths = []
 
     # Define 4 cardinal directions
@@ -735,7 +750,7 @@ def generate_self_avoiding_walk(
                     break
 
                 # Choose random available direction
-                next_pos = available_dirs[np.random.randint(len(available_dirs))]
+                next_pos = available_dirs[rng.integers(len(available_dirs))]
                 path.append(next_pos)
                 visited.add(next_pos)
 
@@ -774,7 +789,10 @@ def generate_self_avoiding_walk(
 
 
 def generate_dla(
-    num_particles: int = 5000, size: int = 256, seed_position: Optional[Tuple[int, int]] = None
+    num_particles: int = 5000,
+    size: int = 256,
+    seed_position: Optional[Tuple[int, int]] = None,
+    seed: Optional[int] = None,
 ) -> np.ndarray:
     """
     Generate a DLA (Diffusion-Limited Aggregation) fractal cluster.
@@ -814,6 +832,7 @@ def generate_dla(
     - They perform random walks until they stick or escape
     - Launch radius grows as cluster grows (killing radius prevents escapes)
     """
+    rng = np.random.default_rng(seed)
     grid = np.zeros((size, size), dtype=bool)
 
     if seed_position is None:
@@ -835,7 +854,7 @@ def generate_dla(
             break  # Stop if approaching boundary
 
         # Launch particle from random angle
-        angle = 2 * np.pi * np.random.rand()
+        angle = 2 * np.pi * rng.random()
         x = int(center_x + launch_radius * np.cos(angle))
         y = int(center_y + launch_radius * np.sin(angle))
 
@@ -873,7 +892,7 @@ def generate_dla(
                 break
 
             # Random walk step (8 directions)
-            direction = np.random.randint(0, 8)
+            direction = rng.integers(0, 8)
             moves = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
             dx, dy = moves[direction]
             x += dx

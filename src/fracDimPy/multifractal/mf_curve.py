@@ -20,7 +20,12 @@ import multiprocessing
 # type: ignore
 from typing import Tuple, List, Optional, Union
 from .custom_epsilon import custom_epsilon, is_power_of_two
-from ..utils.multifractal_common import default_q_list, compute_partition, build_figure_data
+from ..utils.multifractal_common import (
+    default_q_list,
+    compute_partition,
+    build_figure_data,
+    build_metrics,
+)
 from ..utils.scales import power_of_two_scales
 from ..utils.box_counting_core import count_boxes_fixed
 
@@ -34,6 +39,7 @@ def multifractal_curve(
     data_type: str = "single",
     interpolate_to_power2: bool = True,
     remove_zeros: bool = True,
+    verbose: bool = False,
 ) -> Tuple[dict, dict]:
     """
 
@@ -82,14 +88,14 @@ def multifractal_curve(
     >>> #
     >>> data = np.random.randn(1024)
     >>> metrics, figure_data = multifractal_curve(data, data_type='single')
-    >>> print(f" D(0): {metrics[' D(0)'][0]:.4f}")
-    >>> print(f" D(1): {metrics[' D(1)'][0]:.4f}")
+    >>> print(f"D(0): {metrics['D(0)'][0]:.4f}")
+    >>> print(f"D(1): {metrics['D(1)'][0]:.4f}")
     >>>
     >>> # XY
     >>> x = np.linspace(0, 10, 1024)
     >>> y = np.random.randn(1024)
     >>> metrics, figure_data = multifractal_curve((x, y), data_type='dual')
-    >>> print(f" D(0): {metrics[' D(0)'][0]:.4f}")
+    >>> print(f"D(0): {metrics['D(0)'][0]:.4f}")
 
     Notes
     -----
@@ -105,7 +111,8 @@ def multifractal_curve(
         if isinstance(data, tuple) and len(data) == 2:
             x_data, y_data = data
 
-            print(f": {len(y_data)}")
+            if verbose:
+                print(f": {len(y_data)}")
 
             # epsilonRun_CustomEpsilon.py
             # 2
@@ -131,10 +138,12 @@ def multifractal_curve(
                 interpolate_to_power2=interpolate_to_power2,
                 target_length=target_length,
                 remove_zeros=remove_zeros,
+                verbose=verbose,
             )
 
             if interpolate_to_power2:
-                print(f": {len(mt)} (2)")
+                if verbose:
+                    print(f": {len(mt)} (2)")
 
         else:
             raise ValueError(" (x, y) ")
@@ -158,8 +167,9 @@ def multifractal_curve(
     elif epsilonl is None:
         epsilonl = epsilon_grid  # type: ignore[assignment]
 
-    print(f"{epsilon_grid}")
-    print(f"q: {q_list}")
+    if verbose:
+        print(f"{epsilon_grid}")
+        print(f"q: {q_list}")
 
     q_min = min(q_list)  # type: ignore[assignment]
     q_max = max(q_list)  # type: ignore[assignment]
@@ -203,49 +213,19 @@ def multifractal_curve(
     dl = list(dl)
 
     coeff = polyfit(al, fl, 2)
-    print(f"f- : f = {coeff[0]:.4f} + {coeff[1]:.4f} + {coeff[2]:.4f}")
+    if verbose:
+        print(f"f- : f = {coeff[0]:.4f} + {coeff[1]:.4f} + {coeff[2]:.4f}")
 
-    #
-    W = max(al) - min(al)
-    W_l = al[q_list.index(0)] - min(al)
-    W_r = max(al) - al[q_list.index(0)]
-
-    #
-    metrics = {
-        #
-        "lenth": [np.sum(mt)],
-        "mean": [np.mean(mt)],
-        #
-        "(q=0)": [al[q_list.index(0)]],
-        "(q=1)": [al[q_list.index(1)]],
-        "(q=2)": [al[q_list.index(2)]],
-        f"(q={q_min})": [al[q_list.index(q_min)]],
-        f"(q={q_max})": [al[q_list.index(q_max)]],
-        f"(q={q_min}) - (q=0)": [al[q_list.index(q_min)] - al[q_list.index(0)]],
-        f"(q=0) - (q={q_max})": [al[q_list.index(0)] - al[q_list.index(q_max)]],
-        f"(q={q_min}) - (q={q_max})": [al[q_list.index(q_min)] - al[q_list.index(q_max)]],
-        #
-        "quad_coeff": [coeff[0]],
-        "linear_coeff": [coeff[1]],
-        "const_coeff": [coeff[2]],
-        "f(q=0)": [fl[q_list.index(0)]],
-        "f(q=1)": [fl[q_list.index(1)]],
-        "f(q=2)": [fl[q_list.index(2)]],
-        f"f(q={q_min})": [fl[q_list.index(q_min)]],
-        f"f(q={q_max})": [fl[q_list.index(q_max)]],
-        "width_left": [W_l],
-        "width_right": [W_r],
-        "width_total": [W],
-        #
-        "H": [(1 + dl[q_list.index(2)]) / 2],
-        " D(0)": [dl[q_list.index(0)]],
-        " D(1)": [dl[q_list.index(1)]],
-        " D(2)": [dl[q_list.index(2)]],
-        "D(0)-D(1)": [dl[q_list.index(0)] - dl[q_list.index(1)]],
-        f"D({q_min})": [dl[q_list.index(q_min)]],
-        f"D({q_max})": [dl[q_list.index(q_max)]],
-        f"D({q_min})-D({q_max})": [dl[q_list.index(q_min)] - dl[q_list.index(q_max)]],
-    }
+    metrics = build_metrics(
+        q_list,
+        al,
+        fl,
+        dl,
+        q_min,
+        q_max,
+        coeff=coeff,
+        extra={"lenth": np.sum(mt), "mean": np.mean(mt)},
+    )
 
     figure_data = build_figure_data(q_list, tl, al, fl, dl, xl)
 

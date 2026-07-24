@@ -31,7 +31,7 @@ Author: Zhile Han
 Link: https://www.zhihu.com/people/xiao-xue-sheng-ye-xiang-xie-shu/posts
 """
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"
 __author__ = "Zhile Han"
 
 # Import main modules

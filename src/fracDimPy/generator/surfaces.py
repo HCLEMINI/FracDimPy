@@ -12,9 +12,12 @@ This module implements various fractal surface generation algorithms:
 """
 
 import numpy as np
+from typing import Optional
 
 
-def generate_fbm_surface(dimension: float, size: int = 256, method: str = "fft") -> np.ndarray:
+def generate_fbm_surface(
+    dimension: float, size: int = 256, method: str = "fft", seed: Optional[int] = None
+) -> np.ndarray:
     """
     Generate a Fractional Brownian Motion (FBM) surface.
 
@@ -25,8 +28,9 @@ def generate_fbm_surface(dimension: float, size: int = 256, method: str = "fft")
     size : int, optional
         Surface resolution (size x size), default is 256
     method : str, optional
-        Generation method: 'fft' or 'midpoint'
-        Default is 'fft'
+        Generation method. Only 'fft' is implemented (default).
+    seed : int, optional
+        Random seed for reproducibility. None (default) draws fresh randomness.
 
     Returns
     -------
@@ -48,14 +52,15 @@ def generate_fbm_surface(dimension: float, size: int = 256, method: str = "fft")
         raise ValueError("Dimension must be in range (2, 3)")
 
     if method == "fft":
-        return _generate_fbm_surface_fft(dimension, size)
+        return _generate_fbm_surface_fft(dimension, size, seed)
     elif method == "midpoint":
-        return _generate_fbm_surface_midpoint(dimension, size)
+        # Not yet implemented; kept distinct from 'fft' for forward compatibility.
+        raise ValueError("method='midpoint' is not implemented; use method='fft' (default).")
     else:
         raise ValueError(f"Unknown method: {method}")
 
 
-def _generate_fbm_surface_fft(dimension: float, size: int) -> np.ndarray:
+def _generate_fbm_surface_fft(dimension: float, size: int, seed: Optional[int] = None) -> np.ndarray:
     """
     Generate FBM surface using FFT-based spectral synthesis.
 
@@ -93,7 +98,8 @@ def _generate_fbm_surface_fft(dimension: float, size: int) -> np.ndarray:
 
     # Generate random phase
     # Complex Gaussian random field
-    phase = np.random.randn(n, n) + 1j * np.random.randn(n, n)
+    rng = np.random.default_rng(seed)
+    phase = rng.standard_normal((n, n)) + 1j * rng.standard_normal((n, n))
 
     # Enforce Hermitian symmetry for real-valued IFFT
     # This ensures IFFT output is real
@@ -120,7 +126,11 @@ def _generate_fbm_surface_midpoint(dimension: float, size: int) -> np.ndarray:
 
 
 def generate_wm_surface(
-    dimension: float, size: int = 256, level: int = 10, lambda_param: float = 1.5
+    dimension: float,
+    size: int = 256,
+    level: int = 10,
+    lambda_param: float = 1.5,
+    seed: Optional[int] = None,
 ) -> np.ndarray:
     """
     Generate a Weierstrass-Mandelbrot function surface.
@@ -168,11 +178,11 @@ def generate_wm_surface(
     if lambda_param <= 1:
         raise ValueError("Lambda parameter must be > 1")
 
-    # Generate random parameters
-    np.random.seed()  # Ensure different results each time
-    C = np.random.normal(0, 1, level)  # Amplitude coefficients
-    A = np.random.uniform(0, 2 * np.pi, level)  # Phase angles
-    B = np.random.uniform(0, 2 * np.pi, level)  # Direction angles
+    # Generate random parameters (local RNG; no global-state mutation)
+    rng = np.random.default_rng(seed)
+    C = rng.normal(0, 1, level)  # Amplitude coefficients
+    A = rng.uniform(0, 2 * np.pi, level)  # Phase angles
+    B = rng.uniform(0, 2 * np.pi, level)  # Direction angles
 
     # Create coordinate grid
     x = np.linspace(0, 6, size)  # Domain [0, 6] for better visualization

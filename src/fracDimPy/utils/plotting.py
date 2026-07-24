@@ -162,9 +162,9 @@ def plot_multifractal_spectrum(
     fig, axes = plt.subplots(2, 2, figsize=(14, 10))
 
     q = figure_data["q"]
-    tau = figure_data.get("τ(q)", figure_data.get("(q)", []))
-    alpha = figure_data.get("α(q)", figure_data.get("(q)", []))
-    f = figure_data.get("f(α)", figure_data.get("f()", []))
+    tau = figure_data.get("tau_q", figure_data.get("τ(q)", figure_data.get("(q)", [])))
+    alpha = figure_data.get("alpha_q", figure_data.get("α(q)", figure_data.get("(q)", [])))
+    f = figure_data.get("f()", figure_data.get("f(α)", []))
     D = figure_data["D(q)"]
 
     # τ(q) vs q - Mass exponent
