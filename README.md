@@ -4,7 +4,7 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Version](https://img.shields.io/badge/version-0.1.5-green.svg)](https://pypi.org/project/FracDimPy/0.1.5/)
+[![Version](https://img.shields.io/badge/version-0.1.6-green.svg)](https://pypi.org/project/FracDimPy/0.1.6/)
 [![PyPI](https://img.shields.io/pypi/v/FracDimPy.svg)](https://pypi.org/project/FracDimPy/)
 
 **A Comprehensive Python Package for Fractal Dimension Calculation and Multifractal Analysis**
@@ -157,6 +157,23 @@ Provides various monofractal dimension calculation methods:
 | Sandbox               | `sandbox_method()`        | Point set/image | Local scale analysis                                    |
 | DFA                   | `dfa()`                   | 1D time series  | Detrended Fluctuation Analysis                          |
 
+#### Memory-light point-cloud box counting
+
+For sparse or high-resolution sets (fracture networks, porous media, Kakeya sets),
+use `data_type="points"`: points are hashed to their enclosing box and distinct
+boxes are counted via row-uniqueness, using `O(M)` memory for `M` points instead
+of `O(N^d)` — strictly equivalent to dense fixed-grid counting at equal epsilon.
+
+| Grid N | dense `porous` peak mem | `points` peak mem |
+| --- | --- | --- |
+| 128 | 29 MB | 3.5 MB |
+| 256 | 235 MB | 28 MB |
+
+```python
+coords = np.argwhere(binary_volume > 0).astype(float)   # nonzero voxels, shape (M, 3)
+D, res = box_counting(coords, data_type="points")        # no N^3 grid allocated
+```
+
 ### 2. Multifractal Module (`multifractal`)
 
 Provides multifractal analysis tools:
@@ -195,6 +212,30 @@ Generates various theoretical and random fractals:
 - `generate_koch_snowflake()` - Koch snowflake
 - `generate_dla()` - Diffusion-Limited Aggregation
 - `generate_menger_sponge()` - Menger sponge (3D)
+
+**Kakeya sets** (point clouds):
+
+- `generate_kakeya_set()` - discrete Kakeya/Besicovitch set (a line segment in every direction)
+
+#### Kakeya set and the Kakeya conjecture
+
+A Kakeya set contains a unit line segment in every direction. The Kakeya conjecture
+asserts that its Hausdorff and Minkowski dimensions equal the embedding dimension
+`d` (proved for `d=2` by Davies, 1971; for `d=3` by Wang and Zahl, 2025). This
+generator produces a discrete point-cloud approximation whose Minkowski dimension
+can be estimated with `box_counting(data_type="points")`.
+
+```python
+from fracDimPy import generate_kakeya_set, box_counting
+pts = generate_kakeya_set(dimension=3, num_directions=2000, seed=42)
+D, res = box_counting(pts, data_type="points")
+print(f"D={D:.3f}, R2={res['R2']:.4f}")  # D rises toward 3 as num_directions grows
+```
+
+> **Note**: this is a numerical illustration of the Minkowski dimension converging
+> toward `d`, **not** a proof of the Kakeya conjecture. A finite, discretised set
+> gives `D < d` (e.g. ~2.7 at 8000 directions in 3D); the gap closes as the
+> direction count and sampling density increase.
 
 ### 4. Utility Module (`utils`)
 
@@ -362,13 +403,27 @@ If you use FracDimPy in your research, please cite:
   title = {FracDimPy: A Comprehensive Python Package for Fractal Dimension Calculation and Multifractal Analysis},
   year = {2024},
   url = {https://github.com/Kecoya/FracDimPy},
-  version = {0.1.5}
+  version = {0.1.6}
 }
 ```
 
 ---
 
 ## 📋 Changelog
+
+### v0.1.6 (2026)
+
+**Performance & new generators**
+
+- Added `box_counting(data_type="points")`: memory-light point-cloud box counting
+  (`O(M)` instead of `O(N^d)`), strictly equivalent to dense fixed-grid counting at
+  equal epsilon — ~3-8× less memory and faster on sparse 3D sets (fracture networks,
+  porous media, Kakeya sets)
+- Removed a redundant array copy in `count_boxes_fixed`; all dense box-counting paths
+  benefit from lower peak memory
+- Added `generate_kakeya_set()` (2D/3D discrete Kakeya/Besicovitch point cloud) with
+  a numerical Minkowski-dimension demo of the Kakeya conjecture (Wang & Zahl, 2025)
+- All 401 tests pass (384 existing + 17 new)
 
 ### v0.1.5 (2026)
 

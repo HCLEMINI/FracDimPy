@@ -27,7 +27,7 @@ def count_boxes_fixed(MT, epsilon):
     numpy.ndarray
         Aggregated box values (same ndim as MT, reduced size).
     """
-    result = MT.copy()
+    result = MT  # np.add.reduceat returns a new array; no copy is needed.
     for axis in range(MT.ndim):
         indices = np.arange(0, MT.shape[axis], epsilon)
         if len(indices) == 0:
@@ -57,6 +57,38 @@ def count_nonempty(MT, epsilon, max_fill=None):
     if max_fill is None:
         max_fill = epsilon ** MT.ndim
     return int(np.sum((aggregated > 0) & (aggregated <= max_fill)))
+
+
+def count_boxes_points(coords, epsilon):
+    """Count non-empty boxes covering a point cloud at scale ``epsilon``.
+
+    Memory-light alternative to dense box counting: instead of allocating an
+    ``N**d`` grid, each point is hashed to its enclosing box and the number of
+    distinct boxes is counted. Mathematically equivalent to dense fixed-grid
+    box counting on the same point set, but uses ``O(M)`` memory for ``M``
+    points instead of ``O(N**d)``.
+
+    Parameters
+    ----------
+    coords : numpy.ndarray
+        Point coordinates, shape ``(M,)`` or ``(M, d)``.
+    epsilon : float
+        Box size, in the same units as ``coords``.
+
+    Returns
+    -------
+    int
+        Number of distinct boxes that contain at least one point.
+    """
+    coords = np.asarray(coords, dtype=float)
+    if coords.ndim == 1:
+        coords = coords.reshape(-1, 1)
+    boxes = np.floor(coords / epsilon).astype(np.int64)
+    boxes = np.ascontiguousarray(boxes)
+    # Fast row-wise uniqueness via a void-typed view of the raw bytes; avoids
+    # both Python-level encoding and the overflow risk of manual 1D hashing.
+    view = boxes.view(np.dtype((np.void, boxes.dtype.itemsize * boxes.shape[1])))
+    return int(np.unique(view).shape[0])
 
 
 def count_boxes_sliding(MT, epsilon, step=None, max_fill=None):

@@ -4,7 +4,7 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Version](https://img.shields.io/badge/version-0.1.5-green.svg)](https://github.com/songLe/FracDimPy)
+[![Version](https://img.shields.io/badge/version-0.1.6-green.svg)](https://github.com/songLe/FracDimPy)
 
 **一个全面的Python分形维数计算与多重分形分析工具包**
 
@@ -154,6 +154,20 @@ print(f"h(2)={hq['h_q'][idx_2]:.4f}, 谱宽度={spectrum['width']:.4f}")
 | 沙盒法    | `sandbox_method()`        | 点集/图像    | 局部尺度分析             |
 | DFA       | `dfa()`                   | 1D时间序列   | 去趋势波动分析           |
 
+#### 省内存的点云盒计数
+
+对稀疏或高分辨率集合(裂缝网络、多孔介质、挂谷集),用 `data_type="points"`:每个点哈希到所在盒子,通过行唯一性统计非空盒子数,内存 `O(M)`(M 个点)而非 `O(N^d)`——在相同 ε 下与稠密固定网格盒计数严格等价。
+
+| 网格 N | 稠密 `porous` 峰值内存 | `points` 峰值内存 |
+| --- | --- | --- |
+| 128 | 29 MB | 3.5 MB |
+| 256 | 235 MB | 28 MB |
+
+```python
+coords = np.argwhere(binary_volume > 0).astype(float)   # 非零体素,形状 (M, 3)
+D, res = box_counting(coords, data_type="points")        # 不分配 N^3 网格
+```
+
 ### 2. 多重分形模块 (`multifractal`)
 
 提供多重分形分析工具：
@@ -192,6 +206,23 @@ print(f"h(2)={hq['h_q'][idx_2]:.4f}, 谱宽度={spectrum['width']:.4f}")
 - `generate_koch_snowflake()` - Koch雪花
 - `generate_dla()` - 扩散限制聚集
 - `generate_menger_sponge()` - Menger海绵（3D）
+
+**挂谷集**(点云):
+
+- `generate_kakeya_set()` - 离散挂谷(Kakeya/Besicovitch)集(每个方向一条线段)
+
+#### 挂谷集与挂谷猜想
+
+挂谷集是包含每个方向上一条单位线段的集合。挂谷猜想断言其豪斯多夫维数与闵可夫斯基维数都等于嵌入维数 `d`(二维由 Davies 1971 证明,三维由王虹与 Zahl 2025 证明)。本生成器产出离散点云近似,其闵可夫斯基维数可用 `box_counting(data_type="points")` 估计。
+
+```python
+from fracDimPy import generate_kakeya_set, box_counting
+pts = generate_kakeya_set(dimension=3, num_directions=2000, seed=42)
+D, res = box_counting(pts, data_type="points")
+print(f"D={D:.3f}, R2={res['R2']:.4f}")  # D 随方向数增加趋向 3
+```
+
+> **注意**:这是闵可夫斯基维数趋向 `d` 的数值演示,**不是**挂谷猜想的证明。有限、离散化的集合给出 `D < d`(如三维 8000 方向时约 2.7);随方向数与采样密度增加,差距收敛。
 
 ### 4. 工具模块 (`utils`)
 
@@ -359,13 +390,22 @@ python test_hurst.py
   title = {FracDimPy: A Comprehensive Python Package for Fractal Dimension Calculation and Multifractal Analysis},
   year = {2024},
   url = {https://github.com/Kecoya/FracDimPy},
-  version = {0.1.5}
+  version = {0.1.6}
 }
 ```
 
 ---
 
 ## 📋 更新日志
+
+### v0.1.6 (2026)
+
+**性能与新生成器**
+
+- 新增 `box_counting(data_type="points")`:省内存的点云盒计数(`O(M)` 代替 `O(N^d)`),在相同 ε 下与稠密固定网格盒计数严格等价——稀疏 3D 集(裂缝网络、多孔介质、挂谷集)内存降低约 3-8 倍且更快
+- 删除 `count_boxes_fixed` 中的冗余数组拷贝;所有稠密盒计数路径峰值内存下降
+- 新增 `generate_kakeya_set()`(二维/三维离散挂谷/Besicovitch 点云),配挂谷猜想的闵可夫斯基维数数值演示(Wang & Zahl, 2025)
+- 全部 401 个测试通过(原 384 + 新增 17)
 
 ### v0.1.5 (2026)
 

@@ -42,7 +42,7 @@ from typing import Tuple, Union
 
 from ..utils.fitting import log_log_fit
 from ..utils.scales import power_of_two_scales
-from ..utils.box_counting_core import count_nonempty
+from ..utils.box_counting_core import count_nonempty, count_boxes_points
 from ..utils.conversion import apply_boundary_padding, coordinate_to_matrix_1d
 
 
@@ -119,6 +119,8 @@ def box_counting(
         return _box_counting_scatter(data, boundary_mode, partition_strategy, verbose=verbose, **kwargs)
     elif data_type == "porous":
         return _box_counting_porous(data, boundary_mode, partition_strategy, verbose=verbose, **kwargs)  # type: ignore[arg-type]
+    elif data_type == "points":
+        return _box_counting_points(data, verbose=verbose, **kwargs)  # type: ignore[arg-type]
     else:
         raise ValueError(f"Unsupported data type: {data_type}")
 
@@ -1241,3 +1243,87 @@ def _count_boxes_3d_advanced(
 
     else:
         return _count_boxes_3d(MT, EPSILON)
+
+
+def _box_counting_points(
+    data, num_scales: int = 20, verbose: bool = False, **kwargs
+) -> Tuple[float, dict]:
+    """Box-counting dimension from a point cloud (memory-light, no ``N**d`` grid).
+
+    Each point is hashed to its enclosing box of side ``epsilon`` and the
+    number of distinct non-empty boxes is counted via row-uniqueness. This is
+    mathematically equivalent to dense fixed-grid box counting on the same
+    point set, but uses ``O(M)`` memory for ``M`` points instead of
+    ``O(N**d)`` — suitable for sparse / high-resolution sets (Kakeya sets,
+    fracture networks, porous media).
+
+    Parameters
+    ----------
+    data : np.ndarray
+        Point coordinates, shape ``(M,)`` for 1D or ``(M, d)`` for
+        d-dimensional. A ``(d, M)`` array is auto-transposed.
+    num_scales : int, optional
+        Number of box sizes, log-spaced between ``extent/4`` and a fine scale
+        where each box holds roughly one point (default 20).
+    verbose : bool, optional
+        Print per-scale diagnostics (default False).
+
+    Returns
+    -------
+    dimension : float
+        Estimated box-counting (Minkowski) dimension.
+    result : dict
+        Standard result dict (``dimension``, ``N_values``, ``epsilon_values``,
+        ``log_inv_epsilon``, ``log_N``, ``R2``, ``coefficients``, ``method``,
+        ``num_points``, ``embedding_dim``).
+    """
+    coords = np.atleast_2d(np.asarray(data, dtype=float))
+    if coords.shape[0] < coords.shape[1]:
+        coords = coords.T  # interpret as (M, d)
+    n_pts, dim = coords.shape
+
+    extent = float(np.max(np.ptp(coords, axis=0)))
+    if extent <= 0:
+        raise ValueError("Point cloud has zero extent; cannot compute dimension.")
+
+    eps_coarse = extent / 4.0
+    # Keep the finest scale above the typical inter-point spacing
+    # (extent / M^(1/d)) and at most ~50x finer than the coarsest, so that
+    # anisotropic point clouds (e.g. unions of line segments) are not measured
+    # below the scale at which they fragment into isolated samples.
+    eps_fine = max(extent / (n_pts ** (1.0 / dim)) * 3.0, eps_coarse / 50.0)
+    scales = np.logspace(np.log10(eps_coarse), np.log10(eps_fine), num_scales)
+
+    Nl, epsilonl = [], []
+    for eps in scales:
+        N = count_boxes_points(coords, eps)
+        if N < 2:
+            continue
+        Nl.append(N)
+        epsilonl.append(eps)
+        if verbose:
+            print(f"eps={eps:.6g}  N={N}")
+
+    if len(Nl) < 3:
+        raise ValueError(
+            "Insufficient valid scales for point-cloud box counting; "
+            "provide more points or a wider spatial extent."
+        )
+
+    x_fit = np.log(np.array([1 / e for e in epsilonl]))
+    y_fit = np.log(np.array(Nl))
+    dimension, intercept, R2 = log_log_fit(x_fit, y_fit)
+
+    result = {
+        "dimension": dimension,
+        "N_values": Nl,
+        "epsilon_values": epsilonl,
+        "log_inv_epsilon": x_fit,
+        "log_N": y_fit,
+        "R2": R2,
+        "coefficients": np.array([dimension, intercept]),
+        "method": f"Box-counting (Points, dim={dim})",
+        "num_points": n_pts,
+        "embedding_dim": dim,
+    }
+    return dimension, result

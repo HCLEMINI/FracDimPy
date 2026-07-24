@@ -31,7 +31,7 @@ Author: Zhile Han
 Link: https://www.zhihu.com/people/xiao-xue-sheng-ye-xiang-xie-shu/posts
 """
 
-__version__ = "0.1.5"
+__version__ = "0.1.6"
 __author__ = "Zhile Han"
 
 # Import main modules
@@ -78,6 +78,7 @@ from .generator import (
     generate_self_avoiding_walk,
     generate_dla,
     generate_menger_sponge,
+    generate_kakeya_set,
 )
 
 __all__ = [
@@ -115,6 +116,7 @@ __all__ = [
     "generate_self_avoiding_walk",
     "generate_dla",
     "generate_menger_sponge",
+    "generate_kakeya_set",
     # Main modules
     "monofractal",
     "multifractal",

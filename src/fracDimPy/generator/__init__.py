@@ -41,6 +41,7 @@ from .patterns import (
     generate_dla,
     generate_menger_sponge,
 )
+from .kakeya import generate_kakeya_set
 
 __all__ = [
     #
@@ -63,4 +64,5 @@ __all__ = [
     "generate_self_avoiding_walk",
     "generate_dla",
     "generate_menger_sponge",
+    "generate_kakeya_set",
 ]
