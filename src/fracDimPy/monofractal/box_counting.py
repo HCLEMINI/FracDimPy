@@ -1304,6 +1304,17 @@ def _box_counting_points(
         if verbose:
             print(f"eps={eps:.6g}  N={N}")
 
+    # Sparse-scale filtering: with very few non-empty boxes the log-log slope
+    # is dominated by noise — the dominant error source in 3D box counting.
+    # Drop scales holding fewer than max(20, 1% of the largest count) boxes
+    # before fitting (the fine, direction-rich scales carry the signal).
+    if len(Nl) > 4:
+        arr_N = np.asarray(Nl, dtype=float)
+        arr_e = np.asarray(epsilonl, dtype=float)
+        keep = arr_N >= max(20.0, 0.01 * arr_N.max())
+        Nl = arr_N[keep].tolist()
+        epsilonl = arr_e[keep].tolist()
+
     if len(Nl) < 3:
         raise ValueError(
             "Insufficient valid scales for point-cloud box counting; "
