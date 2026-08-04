@@ -111,3 +111,9 @@ jats/
 # Bandit
 .bandit
 
+# 挂谷猜想证明论文 (arXiv:2502.17655, 王虹 & Zahl) — 本地资料不进 git
+papers/
+
+# 工程应用案例代码 — 一律不推送 GitHub(用户规则:工程应用代码均 ignore,保留本地)
+examples/
+
