@@ -41,7 +41,7 @@ from .patterns import (
     generate_dla,
     generate_menger_sponge,
 )
-from .kakeya import generate_kakeya_set
+from .kakeya import generate_kakeya_set, kakeya_segments, tube_ck_error
 
 __all__ = [
     #
@@ -65,4 +65,6 @@ __all__ = [
     "generate_dla",
     "generate_menger_sponge",
     "generate_kakeya_set",
+    "kakeya_segments",
+    "tube_ck_error",
 ]

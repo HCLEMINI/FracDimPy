@@ -233,6 +233,25 @@ D, res = box_counting(pts, data_type="points")
 print(f"D={D:.3f}, R2={res['R2']:.4f}")  # D rises toward 3 as num_directions grows
 ```
 
+A companion structural check follows the Wang-Zahl proof (arXiv:2502.17655):
+the tubes of a Kakeya set obey the Wolff (non-clustering) axioms — every
+convex set `W` contains at most ~`|W|/|T|` tubes, i.e. the Katz-Tao error
+`CKT ~ 1`. `tube_ck_error` estimates this error numerically:
+
+```python
+from fracDimPy import kakeya_segments, tube_ck_error
+segs = kakeya_segments(dimension=3, num_directions=2000, length=1.0)
+ck, _ = tube_ck_error(segs, delta=0.01, mode="contained")  # tube-body clustering
+ck2, _ = tube_ck_error(segs, delta=0.01, mode="passing")   # crossing density
+```
+
+`mode="contained"` is the faithful reading of the Wolff axioms (a tube counts
+when its whole body lies inside `W`): a dense parallel bundle gives `CKT >> 1`,
+while directionally spread tubes give `CKT ~ O(1)`. `mode="passing"` instead
+counts tubes whose centre line crosses `W` — it detects crossing density
+(e.g. every segment through a common point), at the price of noisier fine
+scales.
+
 > **Note**: this is a numerical illustration of the Minkowski dimension converging
 > toward `d`, **not** a proof of the Kakeya conjecture. A finite, discretised set
 > gives `D < d` (e.g. ~2.7 at 8000 directions in 3D); the gap closes as the

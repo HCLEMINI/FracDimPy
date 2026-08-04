@@ -223,6 +223,17 @@ D, res = box_counting(pts, data_type="points")
 print(f"D={D:.3f}, R2={res['R2']:.4f}")  # D 随方向数增加趋向 3
 ```
 
+配套的结构检验沿王虹-Zahl 证明(arXiv:2502.17655)的思路:挂谷集的管满足 Wolff(非聚集)公理——任意凸集 `W` 至多含约 `|W|/|T|` 根管,即 Katz-Tao 误差 `CKT ~ 1`。`tube_ck_error` 数值估计该误差:
+
+```python
+from fracDimPy import kakeya_segments, tube_ck_error
+segs = kakeya_segments(dimension=3, num_directions=2000, length=1.0)
+ck, _ = tube_ck_error(segs, delta=0.01, mode="contained")  # 管体聚集
+ck2, _ = tube_ck_error(segs, delta=0.01, mode="passing")   # 穿越密度
+```
+
+`mode="contained"` 是 Wolff 公理的忠实解读(管体完整落在 `W` 内才计数):密集平行管束给出 `CKT >> 1`,方向分散的管给出 `CKT ~ O(1)`。`mode="passing"` 改为统计中心线穿过 `W` 的管,检测穿越密度(如所有线段过同一点),但细尺度噪音较大。
+
 > **注意**:这是闵可夫斯基维数趋向 `d` 的数值演示,**不是**挂谷猜想的证明。有限、离散化的集合给出 `D < d`(如三维 8000 方向时约 2.7);随方向数与采样密度增加,差距收敛。
 
 ### 4. 工具模块 (`utils`)
