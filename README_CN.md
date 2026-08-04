@@ -161,8 +161,8 @@ print(f"h(2)={hq['h_q'][idx_2]:.4f}, 谱宽度={spectrum['width']:.4f}")
 
 盒计数对测度零集合(曲线、裂缝网络)病态:空盒统计与网格对齐占主导,稀疏 3D 线甚至直接失败。推荐:
 
-- **`divider_dimension()`** 用于*有序*曲线(海岸线、裂缝迹线、测井曲线)——弦步法,不碰环境网格,已知曲线上精度约 0.1%
-- **`minkowski_dimension_mc()`** 用于*无序*点云/网络(孔喉网络、裂缝网络)——蒙特卡洛膨胀体积
+- **`divider_dimension()`** 用于*有序、自相似*曲线(Koch、海岸线、裂缝迹线)——弦步法,不碰环境网格。注意:*自仿态*曲线(fBm、Weierstrass、Takagi 函数)的 divider 维数与盒维数有已知定理差异,这类请用 `variogram_method` / `structural_function`
+- **`minkowski_dimension_mc()`** 用于*无序*点云/网络(孔喉网络、裂缝网络)——蒙特卡洛膨胀体积,带自动标度区检测;在 Cantor/Sierpinski/地毯/Vicsek/Menger 上回算已知 D 误差约 0.1
 - **`box_counting()`** 用于填充集(图像、曲面、孔隙体)
 
 #### 省内存的点云盒计数

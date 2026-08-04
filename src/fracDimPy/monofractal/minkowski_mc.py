@@ -118,15 +118,33 @@ def minkowski_dimension_mc(
     scales = np.asarray(scales)
     keep = fracs >= min_hit_frac
     Vs, scales, fracs = Vs[keep], scales[keep], fracs[keep]
-    if len(Vs) < 3:
+    if len(Vs) < 5:
         raise ValueError(
             "Insufficient scales with adequate MC hits; "
             "increase n_samples or widen the point set"
         )
 
-    x_fit = np.log(scales)
-    y_fit = np.log(Vs)
-    slope, intercept, R2 = log_log_fit(x_fit, y_fit)
+    # Automatic scale-region detection: a dilation curve on a finite set has
+    # three regimes — resolution floor (small delta), linear scaling (the true
+    # Minkowski region), and boundary saturation (large delta, hit->1). We pick
+    # the window where the *local* Minkowski dimension D(delta) is most stable
+    # (smallest variance): that is the genuine scaling region. (Maximising R^2
+    # alone fails on highly-filled sets, where the saturation regime is also
+    # near-perfectly linear but has the wrong slope.)
+    lx = np.log(scales)
+    ly = np.log(Vs)
+    n = len(scales)
+    min_len = max(5, n // 3)
+    Dloc = dim - np.gradient(ly, lx)
+    best_var, best_i = np.inf, 0
+    for i in range(0, n - min_len + 1):
+        v = float(np.var(Dloc[i:i + min_len]))
+        if v < best_var:
+            best_var, best_i = v, i
+    best_j = best_i + min_len
+    slope, intercept, R2 = log_log_fit(lx[best_i:best_j], ly[best_i:best_j])
+    x_fit = lx[best_i:best_j]
+    y_fit = ly[best_i:best_j]
     dimension = dim - slope
 
     result = {
@@ -136,6 +154,9 @@ def minkowski_dimension_mc(
         "hit_fractions": fracs.tolist(),
         "log_delta": x_fit,
         "log_V": y_fit,
+        "all_log_delta": lx,
+        "all_log_V": ly,
+        "scale_region": [int(best_i), int(best_j)],
         "R2": R2,
         "coefficients": np.array([dimension, intercept]),
         "method": f"Minkowski-MC (dim={dim})",

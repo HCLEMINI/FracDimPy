@@ -166,10 +166,15 @@ Box-counting is ill-conditioned for measure-zero sets (curves, fracture
 networks): empty-box statistics and grid alignment dominate, and it can fail
 outright for sparse 3D lines. Prefer:
 
-- **`divider_dimension()`** for an *ordered* curve (coastline, fracture trace,
-  well log) — chord-walk, no ambient grid, ~0.1% accuracy on known curves.
+- **`divider_dimension()`** for an *ordered, self-similar* curve (Koch,
+  coastline, fracture trace) — chord-walk, no ambient grid. Note: the divider
+  dimension of a *self-affine* curve (fBm, Weierstrass, Takagi functions)
+  differs from its box dimension by a known theorem, so use
+  `variogram_method` / `structural_function` for those.
 - **`minkowski_dimension_mc()`** for an *unordered* point cloud / network
-  (pore-throat or fracture network) — dilation volume via Monte-Carlo.
+  (pore-throat or fracture network) — dilation volume via Monte-Carlo, with
+  automatic scale-region detection. Recovers known D on Cantor / Sierpinski /
+  carpet / Vicsek / Menger to within ~0.1.
 - **`box_counting()`** for filled sets (images, surfaces, porous volumes).
 
 #### Memory-light point-cloud box counting
