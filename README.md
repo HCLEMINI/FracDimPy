@@ -43,6 +43,7 @@ FracDimPy is a powerful and easy-to-use Python package designed for fractal dime
   - Random fractals: Brownian motion, Lévy flight, self-avoiding walk, Diffusion-Limited Aggregation (DLA)
   - Fractal curves: FBM curve, Weierstrass-Mandelbrot function, Takagi curve
   - Fractal surfaces: FBM surface, Weierstrass-Mandelbrot surface, Takagi surface
+  - Kakeya sets: discrete Besicovitch set (a line segment in every direction), with a numerical Kakeya-conjecture dimension demo
 - **📈 Rich Visualization**
 
   - Automatic generation of professional charts

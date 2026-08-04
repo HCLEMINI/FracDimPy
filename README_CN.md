@@ -42,6 +42,7 @@ FracDimPy 是一个功能强大、易于使用的Python软件包，专门用于�
   - 随机分形：布朗运动、Lévy飞行、自回避行走、扩散限制聚集(DLA)
   - 分形曲线：FBM曲线、Weierstrass-Mandelbrot函数、Takagi曲线
   - 分形曲面：FBM曲面、Weierstrass-Mandelbrot曲面、Takagi曲面
+  - 挂谷集：离散Besicovitch集(每个方向一条线段),配挂谷猜想的维数数值演示
 - **📈 丰富的可视化**
 
   - 自动生成专业图表
