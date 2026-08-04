@@ -29,6 +29,8 @@ from .sandbox import sandbox_method
 from .information_dimension import information_dimension
 from .correlation_dimension import correlation_dimension
 from .dfa import dfa
+from .divider import divider_dimension
+from .minkowski_mc import minkowski_dimension_mc
 
 __all__ = [
     "hurst_dimension",
@@ -39,4 +41,6 @@ __all__ = [
     "information_dimension",
     "correlation_dimension",
     "dfa",
+    "divider_dimension",
+    "minkowski_dimension_mc",
 ]

@@ -157,6 +157,20 @@ Provides various monofractal dimension calculation methods:
 | Variogram             | `variogram_method()`      | 1D/2D           | Geostatistical method                                   |
 | Sandbox               | `sandbox_method()`        | Point set/image | Local scale analysis                                    |
 | DFA                   | `dfa()`                   | 1D time series  | Detrended Fluctuation Analysis                          |
+| Divider (Richardson)  | `divider_dimension()`     | Ordered curve   | Chord-walk; robust for sparse curves (2D/3D)           |
+| Minkowski-MC          | `minkowski_dimension_mc()`| Point cloud / network | Dilation volume via Monte-Carlo                  |
+
+#### Choosing a method for sparse lines / networks
+
+Box-counting is ill-conditioned for measure-zero sets (curves, fracture
+networks): empty-box statistics and grid alignment dominate, and it can fail
+outright for sparse 3D lines. Prefer:
+
+- **`divider_dimension()`** for an *ordered* curve (coastline, fracture trace,
+  well log) — chord-walk, no ambient grid, ~0.1% accuracy on known curves.
+- **`minkowski_dimension_mc()`** for an *unordered* point cloud / network
+  (pore-throat or fracture network) — dilation volume via Monte-Carlo.
+- **`box_counting()`** for filled sets (images, surfaces, porous volumes).
 
 #### Memory-light point-cloud box counting
 
@@ -443,7 +457,11 @@ If you use FracDimPy in your research, please cite:
   benefit from lower peak memory
 - Added `generate_kakeya_set()` (2D/3D discrete Kakeya/Besicovitch point cloud) with
   a numerical Minkowski-dimension demo of the Kakeya conjecture (Wang & Zahl, 2025)
-- All 401 tests pass (384 existing + 17 new)
+- Added `divider_dimension()` (Richardson chord-walk) and
+  `minkowski_dimension_mc()` (dilation volume via Monte-Carlo): dimension
+  estimators robust for sparse curves / networks where box-counting is
+  ill-conditioned
+- All 418 tests pass
 
 ### v0.1.5 (2026)
 

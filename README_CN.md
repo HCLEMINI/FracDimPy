@@ -154,6 +154,16 @@ print(f"h(2)={hq['h_q'][idx_2]:.4f}, 谱宽度={spectrum['width']:.4f}")
 | 变差函数  | `variogram_method()`      | 1D/2D        | 地统计学方法             |
 | 沙盒法    | `sandbox_method()`        | 点集/图像    | 局部尺度分析             |
 | DFA       | `dfa()`                   | 1D时间序列   | 去趋势波动分析           |
+| 分规法(Richardson) | `divider_dimension()`     | 有序曲线(2D/3D) | 弦步法;稀疏曲线稳健 |
+| Minkowski-MC | `minkowski_dimension_mc()`| 点云/网络      | 蒙特卡洛膨胀体积法   |
+
+#### 稀疏线条/网络的方法选择
+
+盒计数对测度零集合(曲线、裂缝网络)病态:空盒统计与网格对齐占主导,稀疏 3D 线甚至直接失败。推荐:
+
+- **`divider_dimension()`** 用于*有序*曲线(海岸线、裂缝迹线、测井曲线)——弦步法,不碰环境网格,已知曲线上精度约 0.1%
+- **`minkowski_dimension_mc()`** 用于*无序*点云/网络(孔喉网络、裂缝网络)——蒙特卡洛膨胀体积
+- **`box_counting()`** 用于填充集(图像、曲面、孔隙体)
 
 #### 省内存的点云盒计数
 

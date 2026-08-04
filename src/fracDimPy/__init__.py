@@ -50,6 +50,8 @@ from .monofractal import (
     information_dimension,
     correlation_dimension,
     dfa,
+    divider_dimension,
+    minkowski_dimension_mc,
 )
 
 # Import multifractal analysis functions
